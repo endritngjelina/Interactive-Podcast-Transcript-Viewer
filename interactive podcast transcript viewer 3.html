@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Podcast Transcript Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #7209b7;
+            --accent: #f72585;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --success: #4cc9f0;
+            --warning: #f8961e;
+            --danger: #e5383b;
+            --card-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            min-height: 100vh;
+            color: var(--dark);
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+
+        .feature-highlights {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .feature-tag {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 450px;
+            gap: 30px;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            position: relative;
+            min-height: 80vh;
+        }
+
+        .transcript-panel {
+            padding: 30px;
+            max-height: 75vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .controls-panel {
+            background: var(--light);
+            padding: 30px;
+            border-left: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-section {
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .panel-title {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .panel-title i {
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+
+        .audio-player {
+            background: linear-gradient(145deg, #2c3e50, #34495e);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            color: white;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .player-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .episode-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--success);
+        }
+
+        .episode-duration {
+            opacity: 0.8;
+            font-size: 1rem;
+        }
+
+        audio {
+            width: 100%;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .playback-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            background: var(--primary);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            box-shadow: 0 4px 6px rgba(67, 97, 238, 0.3);
+        }
+
+        .control-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(67, 97, 238, 0.4);
+        }
+
+        .control-btn.active {
+            background: var(--accent);
+            box-shadow: 0 4px 6px rgba(247, 37, 133, 0.4);
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .search-section {
+            margin-bottom: 25px;
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 20px 14px 50px;
+            border: 2px solid #e9ecef;
+            border-radius: 50px;
+            font-size: 1rem;
+            transition: var(--transition);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.2);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+            font-size: 1.2rem;
+        }
+
+        .search-results {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: var(--gray);
+            padding: 0 10px;
+            min-height: 22px;
+        }
+
+        .filters-section {
+            margin-bottom: 25px;
+        }
+
+        .filter-group {
+            margin-bottom: 15px;
+        }
+
+        .filter-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .filter-select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background: white;
+            transition: var(--transition);
+        }
+
+        .filter-select:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .settings-section {
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px 0;
+        }
+
+        .setting-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 54px;
+            height: 28px;
+            background: #ccc;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .toggle-switch.active {
+            background: var(--primary);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            transition: var(--transition);
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(26px);
+        }
+
+        .transcript-segment {
+            margin-bottom: 25px;
+            padding: 20px;
+            border-radius: 15px;
+            transition: var(--transition);
+            cursor: pointer;
+            border-left: 4px solid transparent;
+            position: relative;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+        }
+
+        .transcript-segment:hover {
+            background: #f8f9fa;
+            border-left-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .transcript-segment.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border-left-color: var(--accent);
+            box-shadow: 0 8px 20px rgba(67, 97, 238, 0.4);
+            transform: translateY(-3px);
+        }
+
+        .transcript-segment.highlighted {
+            background: #fff3cd;
+            border-left-color: var(--warning);
+        }
+
+        .transcript-segment.sentiment-positive {
+            border-left-color: #2ecc71;
+        }
+
+        .transcript-segment.sentiment-negative {
+            border-left-color: #e74c3c;
+        }
+
+        .segment-timestamp {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: inline-block;
+            transition: var(--transition);
+            background: rgba(67, 97, 238, 0.1);
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+
+        .segment-timestamp:hover {
+            color: var(--primary-dark);
+            background: rgba(67, 97, 238, 0.2);
+        }
+
+        .transcript-segment.active .segment-timestamp {
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .segment-speaker {
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .speaker-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .transcript-segment.active .segment-speaker {
+            color: white;
+        }
+
+        .segment-text {
+            line-height: 1.7;
+            font-size: 1.05rem;
+        }
+
+        .search-highlight {
+            background: var(--warning);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #000;
+        }
+
+        .transcript-segment.active .search-highlight {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .confidence-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        .confidence-high { background: #27ae60; }
+        .confidence-medium { background: #f39c12; }
+        .confidence-low { background: #e74c3c; }
+
+        .export-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .export-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .export-btn {
+            padding: 12px;
+            background: linear-gradient(145deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
+        }
+
+        .export-btn.json {
+            background: linear-gradient(145deg, #27ae60, #2ecc71);
+        }
+
+        .export-btn.srt {
+            background: linear-gradient(145deg, #f39c12, #f1c40f);
+        }
+
+        .stats-panel {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 10px 0 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .waveform-container {
+            height: 100px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .current-position {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+            z-index: 10;
+        }
+
+        .sentiment-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 8px;
+        }
+
+        .sentiment-positive { background: #27ae60; }
+        .sentiment-neutral { background: #f39c12; }
+        .sentiment-negative { background: #e74c3c; }
+
+        .topic-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .topic-tag {
+            background: rgba(67, 97, 238, 0.1);
+            color: var(--primary);
+            padding: 6px 15px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .topic-tag:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .comment-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .comment-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+
+        .comment-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .comments-container {
+            margin-top: 15px;
+        }
+
+        .comment {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--gray);
+            margin-bottom: 5px;
+        }
+
+        .comment-text {
+            font-size: 0.95rem;
+        }
+
+        .comment-icon {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: var(--gray);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .comment-icon:hover {
+            color: var(--primary);
+        }
+
+        .transcript-segment:hover .comment-icon {
+            display: block;
+        }
+
+        .dark-mode-toggle {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: rgba(0,0,0,0.2);
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.5rem;
+            backdrop-filter: blur(5px);
+            transition: var(--transition);
+            z-index: 100;
+        }
+
+        .dark-mode-toggle:hover {
+            background: rgba(0,0,0,0.3);
+            transform: rotate(20deg);
+        }
+
+        body.dark-theme {
+            background: linear-gradient(135deg, #0f1b3a, #2a0a44, #0f1b3a);
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .main-content {
+            background: #1a1d28;
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .controls-panel {
+            background: #151720;
+            border-left: 1px solid #2a2d3a;
+        }
+
+        body.dark-theme .panel-section {
+            background: #1e212e;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        body.dark-theme .panel-title {
+            color: #e0e0e0;
+            border-bottom: 2px solid #2a2d3a;
+        }
+
+        body.dark-theme .transcript-segment {
+            background: #1e212e;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+
+        body.dark-theme .transcript-segment:hover {
+            background: #252837;
+        }
+
+        body.dark-theme .segment-speaker {
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .filter-select {
+            background: #252837;
+            border: 1px solid #2a2d3a;
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .search-input {
+            background: #252837;
+            border: 2px solid #2a2d3a;
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .search-input:focus {
+            border-color: var(--primary);
+        }
+
+        body.dark-theme .search-icon {
+            color: #6c757d;
+        }
+
+        body.dark-theme .stats-panel {
+            background: #151720;
+        }
+
+        body.dark-theme .stat-item {
+            background: #1e212e;
+        }
+
+        body.dark-theme .comment-section {
+            background: #151720;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls-panel {
+                border-left: none;
+                border-top: 1px solid #e9ecef;
+            }
+
+            body.dark-theme .controls-panel {
+                border-top: 1px solid #2a2d3a;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .main-content {
+                border-radius: 15px;
+            }
+            
+            .transcript-panel,
+            .controls-panel {
+                padding: 20px;
+            }
+
+            .export-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .playback-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .control-btn {
+                width: 80%;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <button class="dark-mode-toggle" id="darkModeToggle">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-podcast"></i> Professional Podcast Transcript Viewer</h1>
+            <p>Advanced AI-powered transcript analysis with real-time audio synchronization, sentiment analysis, topic extraction, and collaboration features</p>
+            
+            <div class="feature-highlights">
+                <div class="feature-tag"><i class="fas fa-waveform"></i> Audio Waveform</div>
+                <div class="feature-tag"><i class="fas fa-heart"></i> Sentiment Analysis</div>
+                <div class="feature-tag"><i class="fas fa-comments"></i> Commenting</div>
+                <div class="feature-tag"><i class="fas fa-cloud"></i> Topic Extraction</div>
+                <div class="feature-tag"><i class="fas fa-robot"></i> Speaker Diarization</div>
+                <div class="feature-tag"><i class="fas fa-search"></i> Advanced Search</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="transcript-panel">
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Loading transcript and analyzing content...</p>
+                </div>
+                <div id="transcriptContent"></div>
+            </div>
+
+            <div class="controls-panel">
+                <div class="panel-section">
+                    <div class="panel-title">
+                        <i class="fas fa-music"></i>
+                        <span>Audio Player</span>
+                    </div>
+                    
+                    <div class="waveform-container">
+                        <canvas id="waveformCanvas"></canvas>
+                        <div class="current-position" id="currentPosition"></div>
+                    </div>
+                    
+                    <div class="audio-player">
+                        <div class="player-info">
+                            <div class="episode-title">AI & The Future of Work</div>
+                            <div class="episode-duration">Duration: 45:30 | Recorded: 06/15/2023</div>
+                        </div>
+                        <audio id="audioPlayer" controls>
+                            <source src="#" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                        <div class="playback-controls">
+                            <button class="control-btn" id="rewind15">
+                                <i class="fas fa-backward"></i> 15s
+                            </button>
+                            <button class="control-btn" id="playPause">
+                                <i class="fas fa-play"></i> Play
+                            </button>
+                            <button class="control-btn" id="forward30">
+                                30s <i class="fas fa-forward"></i>
+                            </button>
+                            <button class="control-btn" id="autoScroll">
+                                <i class="fas fa-sync"></i> Auto-scroll
+                            </button>
+                        </div>
+                        <div class="progress-info">
+                            <span id="currentTime">0:00</span>
+                            <span id="totalTime">45:30</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="panel-title">
+                        <i class="fas fa-search"></i>
+                        <span>Search & Filters</span>
+                    </div>
+                    
+                    <div class="search-section">
+                        <div class="search-container">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" class="search-input" id="searchInput" placeholder="Search transcript...">
+                        </div>
+                        <div class="search-results" id="searchResults">Enter a search term to find matches</div>
+                    </div>
+
+                    <div class="filters-section">
+                        <div class="filter-group">
+                            <label class="filter-label">Speaker Filter</label>
+                            <select class="filter-select" id="speakerFilter">
+                                <option value="">All Speakers</option>
+                                <option value="Host">Host - Sarah Chen</option>
+                                <option value="Guest">Guest - Dr. Michael Rodriguez</option>
+                                <option value="Expert">Expert - Alex Johnson</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Confidence Level</label>
+                            <select class="filter-select" id="confidenceFilter">
+                                <option value="">All Levels</option>
+                                <option value="high">High Confidence</option>
+                                <option value="medium">Medium Confidence</option>
+                                <option value="low">Low Confidence</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Sentiment</label>
+                            <select class="filter-select" id="sentimentFilter">
+                                <option value="">All Sentiments</option>
+                                <option value="positive">Positive</option>
+                                <option value="neutral">Neutral</option>
+                                <option value="negative">Negative</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="panel-title">
+                        <i class="fas fa-cogs"></i>
+                        <span>Settings & Export</span>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <div class="setting-item">
+                            <div class="setting-label">
+                                <i class="fas fa-highlighter"></i>
+                                <span>Real-time Highlighting</span>
+                            </div>
+                            <div class="toggle-switch active" id="realtimeToggle"></div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-label">
+                                <i class="fas fa-scroll"></i>
+                                <span>Auto-scroll</span>
+                            </div>
+                            <div class="toggle-switch active" id="autoscrollToggle"></div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-label">
+                                <i class="fas fa-chart-line"></i>
+                                <span>Show Confidence</span>
+                            </div>
+                            <div class="toggle-switch active" id="confidenceToggle"></div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-label">
+                                <i class="fas fa-cloud"></i>
+                                <span>Show Topics</span>
+                            </div>
+                            <div class="toggle-switch active" id="topicsToggle"></div>
+                        </div>
+                    </div>
+
+                    <div class="export-section">
+                        <div class="export-buttons">
+                            <button class="export-btn" id="exportTxt">
+                                <i class="fas fa-file-alt"></i> TXT
+                            </button>
+                            <button class="export-btn json" id="exportJson">
+                                <i class="fas fa-code"></i> JSON
+                            </button>
+                            <button class="export-btn srt" id="exportSrt">
+                                <i class="fas fa-closed-captioning"></i> SRT
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="panel-title">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Statistics & Analysis</span>
+                    </div>
+                    
+                    <div class="stats-panel">
+                        <div class="stat-grid">
+                            <div class="stat-item">
+                                <div class="stat-value" id="totalSegments">0</div>
+                                <div class="stat-label">Total Segments</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="wordsPerMinute">0</div>
+                                <div class="stat-label">Words/Min</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="positiveSegments">0</div>
+                                <div class="stat-label">Positive</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="searchMatches">0</div>
+                                <div class="stat-label">Search Matches</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="topic-analysis">
+                        <h4 style="margin: 20px 0 10px; color: var(--dark);">Key Topics</h4>
+                        <div class="topic-cloud" id="topicCloud">
+                            <div class="topic-tag">AI (24)</div>
+                            <div class="topic-tag">Machine Learning (18)</div>
+                            <div class="topic-tag">Ethics (12)</div>
+                            <div class="topic-tag">Automation (10)</div>
+                            <div class="topic-tag">Neural Networks (8)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class PodcastTranscriptViewer {
+            constructor() {
+                this.transcriptData = [];
+                this.currentSegment = null;
+                this.searchResults = [];
+                this.settings = {
+                    realtimeHighlight: true,
+                    autoScroll: true,
+                    showConfidence: true,
+                    showTopics: true
+                };
+                this.audioPlayer = document.getElementById('audioPlayer');
+                this.transcriptContainer = document.getElementById('transcriptContent');
+                this.canvas = document.getElementById('waveformCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.initializeApp();
+                this.loadSampleData();
+                this.setupEventListeners();
+                this.generateWaveform();
+            }
+
+            initializeApp() {
+                this.showLoading(true);
+                setTimeout(() => {
+                    this.showLoading(false);
+                    this.renderTranscript();
+                    this.analyzeContent();
+                }, 1500);
+            }
+
+            showLoading(show) {
+                document.getElementById('loading').style.display = show ? 'block' : 'none';
+            }
+
+            loadSampleData() {
+                this.transcriptData = [
+                    {
+                        id: 1,
+                        startTime: 0,
+                        endTime: 12.5,
+                        speaker: "Host",
+                        text: "Welcome to the Future of Work podcast. I'm your host, Sarah Chen, and today we're discussing how AI is transforming industries and what it means for the future of employment.",
+                        confidence: "high",
+                        wordCount: 27,
+                        sentiment: "neutral"
+                    },
+                    {
+                        id: 2,
+                        startTime: 12.5,
+                        endTime: 28.2,
+                        speaker: "Host",
+                        text: "Joining us is Dr. Michael Rodriguez, a leading AI researcher at NeuroTech Labs. Michael, there's a lot of fear about AI taking jobs. How realistic are these concerns?",
+                        confidence: "high",
+                        wordCount: 24,
+                        sentiment: "neutral"
+                    },
+                    {
+                        id: 3,
+                        startTime: 28.2,
+                        endTime: 45.8,
+                        speaker: "Guest",
+                        text: "Thanks for having me, Sarah. While AI will automate certain tasks, history shows technology creates more jobs than it eliminates. The key is adaptation and education.",
+                        confidence: "high",
+                        wordCount: 22,
+                        sentiment: "positive"
+                    },
+                    {
+                        id: 4,
+                        startTime: 45.8,
+                        endTime: 68.1,
+                        speaker: "Host",
+                        text: "That's reassuring. But we're seeing AI perform creative tasks now - writing, art, even music. How far will this go?",
+                        confidence: "medium",
+                        wordCount: 19,
+                        sentiment: "neutral"
+                    },
+                    {
+                        id: 5,
+                        startTime: 68.1,
+                        endTime: 94.6,
+                        speaker: "Guest",
+                        text: "AI is a tool that amplifies human creativity, not replaces it. The best results come from human-AI collaboration. We're entering an era of augmented intelligence.",
+                        confidence: "high",
+                        wordCount: 21,
+                        sentiment: "positive"
+                    },
+                    {
+                        id: 6,
+                        startTime: 94.6,
+                        endTime: 125.3,
+                        speaker: "Expert",
+                        text: "I'd add that ethical considerations are crucial. We must address bias in AI systems and ensure equitable access to these powerful technologies.",
+                        confidence: "medium",
+                        wordCount: 18,
+                        sentiment: "neutral"
+                    },
+                    {
+                        id: 7,
+                        startTime: 125.3,
+                        endTime: 152.7,
+                        speaker: "Host",
+                        text: "Alex, you've studied AI ethics extensively. What safeguards should companies implement when deploying AI?",
+                        confidence: "high",
+                        wordCount: 14,
+                        sentiment: "neutral"
+                    },
+                    {
+                        id: 8,
+                        startTime: 152.7,
+                        endTime: 185.2,
+                        speaker: "Expert",
+                        text: "Transparency is key. Companies should conduct bias audits, have human oversight, and establish clear accountability frameworks. Without these, we risk amplifying societal inequalities.",
+                        confidence: "high",
+                        wordCount: 20,
+                        sentiment: "neutral"
+                    },
+                    {
+                        id: 9,
+                        startTime: 185.2,
+                        endTime: 218.5,
+                        speaker: "Guest",
+                        text: "I completely agree. At NeuroTech, we've implemented an ethics review board for all our AI projects. It's challenging but essential for responsible innovation.",
+                        confidence: "high",
+                        wordCount: 22,
+                        sentiment: "positive"
+                    },
+                    {
+                        id: 10,
+                        startTime: 218.5,
+                        endTime: 245.0,
+                        speaker: "Host",
+                        text: "Looking ahead, what skills will be most valuable in an AI-driven economy? How should educational institutions adapt?",
+                        confidence: "medium",
+                        wordCount: 17,
+                        sentiment: "neutral"
+                    },
+                    {
+                        id: 11,
+                        startTime: 245.0,
+                        endTime: 278.4,
+                        speaker: "Guest",
+                        text: "Critical thinking, creativity, and emotional intelligence will be paramount. Education should focus less on rote learning and more on problem-solving and adaptability.",
+                        confidence: "high",
+                        wordCount: 19,
+                        sentiment: "positive"
+                    },
+                    {
+                        id: 12,
+                        startTime: 278.4,
+                        endTime: 305.7,
+                        speaker: "Expert",
+                        text: "We also need more interdisciplinary approaches. Understanding both technology and its societal implications will be crucial for the next generation.",
+                        confidence: "high",
+                        wordCount: 16,
+                        sentiment: "neutral"
+                    }
+                ];
+
+                this.updateStats();
+            }
+
+            generateWaveform() {
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                this.ctx.clearRect(0, 0, width, height);
+                
+                // Draw grid
+                this.ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                this.ctx.lineWidth = 1;
+                
+                // Horizontal lines
+                for (let y = 0; y < height; y += height/4) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(width, y);
+                    this.ctx.stroke();
+                }
+                
+                // Draw waveform
+                this.ctx.fillStyle = 'rgba(67, 97, 238, 0.6)';
+                const barWidth = 4;
+                const gap = 2;
+                const maxAmplitude = height / 2;
+                
+                for (let x = 0; x < width; x += barWidth + gap) {
+                    const amplitude = Math.random() * maxAmplitude;
+                    this.ctx.fillRect(x, maxAmplitude - amplitude/2, barWidth, amplitude);
+                }
+                
+                // Draw center line
+                this.ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, height/2);
+                this.ctx.lineTo(width, height/2);
+                this.ctx.stroke();
+            }
+
+            analyzeContent() {
+                // Sentiment analysis
+                const positiveSegments = this.transcriptData.filter(seg => seg.sentiment === "positive").length;
+                document.getElementById('positiveSegments').textContent = positiveSegments;
+                
+                // Word cloud would be generated here in a real implementation
+            }
+
+            setupEventListeners() {
+                // Audio player events
+                this.audioPlayer.addEventListener('timeupdate', () => this.handleTimeUpdate());
+                this.audioPlayer.addEventListener('loadedmetadata', () => this.updateTotalTime());
+                
+                // Update waveform position
+                this.audioPlayer.addEventListener('timeupdate', () => {
+                    const progress = this.audioPlayer.currentTime / this.audioPlayer.duration;
+                    const posX = progress * this.canvas.width;
+                    document.getElementById('currentPosition').style.transform = `translateX(${posX}px)`;
+                });
+
+                // Control buttons
+                document.getElementById('playPause').addEventListener('click', () => this.togglePlayPause());
+                document.getElementById('rewind15').addEventListener('click', () => this.skipTime(-15));
+                document.getElementById('forward30').addEventListener('click', () => this.skipTime(30));
+                document.getElementById('autoScroll').addEventListener('click', () => this.toggleAutoScroll());
+
+                // Search functionality
+                const searchInput = document.getElementById('searchInput');
+                searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.jumpToNextMatch();
+                    }
+                });
+
+                // Filter functionality
+                document.getElementById('speakerFilter').addEventListener('change', (e) => this.applyFilters());
+                document.getElementById('confidenceFilter').addEventListener('change', (e) => this.applyFilters());
+                document.getElementById('sentimentFilter').addEventListener('change', (e) => this.applyFilters());
+
+                // Settings toggles
+                document.getElementById('realtimeToggle').addEventListener('click', (e) => this.toggleSetting(e.target, 'realtimeHighlight'));
+                document.getElementById('autoscrollToggle').addEventListener('click', (e) => this.toggleSetting(e.target, 'autoScroll'));
+                document.getElementById('confidenceToggle').addEventListener('click', (e) => this.toggleSetting(e.target, 'showConfidence'));
+                document.getElementById('topicsToggle').addEventListener('click', (e) => this.toggleSetting(e.target, 'showTopics'));
+
+                // Export buttons
+                document.getElementById('exportTxt').addEventListener('click', () => this.exportTranscript('txt'));
+                document.getElementById('exportJson').addEventListener('click', () => this.exportTranscript('json'));
+                document.getElementById('exportSrt').addEventListener('click', () => this.exportTranscript('srt'));
+                
+                // Dark mode toggle
+                document.getElementById('darkModeToggle').addEventListener('click', () => {
+                    document.body.classList.toggle('dark-theme');
+                    const icon = document.querySelector('#darkModeToggle i');
+                    if (document.body.classList.contains('dark-theme')) {
+                        icon.classList.remove('fa-moon');
+                        icon.classList.add('fa-sun');
+                    } else {
+                        icon.classList.remove('fa-sun');
+                        icon.classList.add('fa-moon');
+                    }
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+                
+                // Canvas click to seek
+                this.canvas.addEventListener('click', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const percent = x / this.canvas.width;
+                    this.audioPlayer.currentTime = percent * this.audioPlayer.duration;
+                });
+            }
+
+            renderTranscript() {
+                const container = this.transcriptContainer;
+                container.innerHTML = '';
+
+                this.transcriptData.forEach(segment => {
+                    if (this.shouldShowSegment(segment)) {
+                        const segmentElement = this.createSegmentElement(segment);
+                        container.appendChild(segmentElement);
+                    }
+                });
+
+                this.highlightSearchResults();
+                this.updateStats();
+            }
+
+            createSegmentElement(segment) {
+                const div = document.createElement('div');
+                div.className = `transcript-segment sentiment-${segment.sentiment}`;
+                div.dataset.segmentId = segment.id;
+                div.dataset.startTime = segment.startTime;
+                div.dataset.speaker = segment.speaker;
+                div.dataset.confidence = segment.confidence;
+                div.dataset.sentiment = segment.sentiment;
+
+                const timestamp = this.formatTime(segment.startTime);
+                const confidenceIndicator = this.settings.showConfidence ? 
+                    `<span class="confidence-indicator confidence-${segment.confidence}"></span>` : '';
+                const sentimentIndicator = `<span class="sentiment-indicator sentiment-${segment.sentiment}"></span>`;
+                const speakerInitial = segment.speaker.charAt(0);
+
+                div.innerHTML = `
+                    <div class="segment-timestamp" data-time="${segment.startTime}">
+                        ${timestamp}${confidenceIndicator}${sentimentIndicator}
+                    </div>
+                    <div class="segment-speaker">
+                        <div class="speaker-avatar">${speakerInitial}</div>
+                        ${segment.speaker}
+                    </div>
+                    <div class="segment-text">${segment.text}</div>
+                    <i class="fas fa-comment comment-icon"></i>
+                    <div class="comment-section">
+                        <textarea class="comment-input" placeholder="Add a comment..."></textarea>
+                        <button class="comment-btn">Add Comment</button>
+                        <div class="comments-container"></div>
+                    </div>
+                `;
+
+                // Add click listeners
+                div.addEventListener('click', (e) => {
+                    if (!e.target.closest('.comment-icon') && !e.target.closest('.comment-btn')) {
+                        this.jumpToTime(segment.startTime);
+                    }
+                });
+                
+                div.querySelector('.comment-icon').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const commentSection = div.querySelector('.comment-section');
+                    commentSection.style.display = commentSection.style.display === 'block' ? 'none' : 'block';
+                });
+                
+                div.querySelector('.comment-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const commentInput = div.querySelector('.comment-input');
+                    const commentText = commentInput.value.trim();
+                    if (commentText) {
+                        this.addComment(segment.id, commentText);
+                        commentInput.value = '';
+                    }
+                });
+
+                div.querySelector('.segment-timestamp').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.jumpToTime(segment.startTime);
+                });
+
+                return div;
+            }
+
+            addComment(segmentId, text) {
+                const segmentElement = document.querySelector(`[data-segment-id="${segmentId}"]`);
+                if (!segmentElement) return;
+                
+                const commentsContainer = segmentElement.querySelector('.comments-container');
+                const comment = document.createElement('div');
+                comment.className = 'comment';
+                
+                const now = new Date();
+                const timestamp = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                comment.innerHTML = `
+                    <div class="comment-header">
+                        <span>You</span>
+                        <span>${timestamp}</span>
+                    </div>
+                    <div class="comment-text">${text}</div>
+                `;
+                
+                commentsContainer.appendChild(comment);
+                
+                // In a real app, we'd save to a database
+                console.log(`Added comment to segment ${segmentId}: "${text}"`);
+            }
+
+            shouldShowSegment(segment) {
+                const speakerFilter = document.getElementById('speakerFilter').value;
+                const confidenceFilter = document.getElementById('confidenceFilter').value;
+                const sentimentFilter = document.getElementById('sentimentFilter').value;
+
+                if (speakerFilter && segment.speaker !== speakerFilter.split(' - ')[0]) {
+                    return false;
+                }
+
+                if (confidenceFilter && segment.confidence !== confidenceFilter) {
+                    return false;
+                }
+                
+                if (sentimentFilter && segment.sentiment !== sentimentFilter) {
+                    return false;
+                }
+
+                return true;
+            }
+
+            handleTimeUpdate() {
+                const currentTime = this.audioPlayer.currentTime;
+                document.getElementById('currentTime').textContent = this.formatTime(currentTime);
+
+                if (this.settings.realtimeHighlight) {
+                    this.updateActiveSegment(currentTime);
+                }
+            }
+
+            updateActiveSegment(currentTime) {
+                // Find the current segment
+                const currentSegment = this.transcriptData.find(segment => 
+                    currentTime >= segment.startTime && currentTime < segment.endTime
+                );
+
+                if (currentSegment && currentSegment !== this.currentSegment) {
+                    // Remove previous active segment
+                    const previousActive = document.querySelector('.transcript-segment.active');
+                    if (previousActive) {
+                        previousActive.classList.remove('active');
+                    }
+
+                    // Set new active segment
+                    const newActive = document.querySelector(`[data-segment-id="${currentSegment.id}"]`);
+                    if (newActive) {
+                        newActive.classList.add('active');
+                        
+                        if (this.settings.autoScroll) {
+                            newActive.scrollIntoView({ 
+                                behavior: 'smooth', 
+                                block: 'center' 
+                            });
+                        }
+                    }
+
+                    this.currentSegment = currentSegment;
+                }
+            }
+
+            handleSearch(query) {
+                if (!query.trim()) {
+                    this.clearSearchHighlights();
+                    this.searchResults = [];
+                    document.getElementById('searchResults').textContent = 'Enter a search term to find matches';
+                    document.getElementById('searchMatches').textContent = '0';
+                    return;
+                }
+
+                this.searchResults = [];
+                const regex = new RegExp(`(${this.escapeRegExp(query)})`, 'gi');
+
+                this.transcriptData.forEach(segment => {
+                    const matches = [...segment.text.matchAll(regex)];
+                    if (matches.length > 0) {
+                        this.searchResults.push({
+                            segment: segment,
+                            matches: matches.length
+                        });
+                    }
+                });
+
+                this.highlightSearchResults(regex);
+                this.updateSearchResults(query);
+            }
+
+            escapeRegExp(string) {
+                return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            highlightSearchResults(regex = null) {
+                const segments = document.querySelectorAll('.transcript-segment');
+                segments.forEach(segment => {
+                    const textElement = segment.querySelector('.segment-text');
+                    const originalText = this.transcriptData.find(s => s.id == segment.dataset.segmentId)?.text || '';
+                    
+                    if (regex) {
+                        const highlightedText = originalText.replace(regex, '<span class="search-highlight">$1</span>');
+                        textElement.innerHTML = highlightedText;
+                        
+                        if (regex.test(originalText)) {
+                            segment.classList.add('highlighted');
+                        } else {
+                            segment.classList.remove('highlighted');
+                        }
+                    } else {
+                        textElement.textContent = originalText;
+                        segment.classList.remove('highlighted');
+                    }
+                });
+            }
+
+            clearSearchHighlights() {
+                const segments = document.querySelectorAll('.transcript-segment');
+                segments.forEach(segment => {
+                    const textElement = segment.querySelector('.segment-text');
+                    const originalText = this.transcriptData.find(s => s.id == segment.dataset.segmentId)?.text || '';
+                    textElement.textContent = originalText;
+                    segment.classList.remove('highlighted');
+                });
+            }
+
+            updateSearchResults(query) {
+                const totalMatches = this.searchResults.reduce((sum, result) => sum + result.matches, 0);
+                document.getElementById('searchMatches').textContent = totalMatches.toString();
+                
+                if (this.searchResults.length > 0) {
+                    document.getElementById('searchResults').textContent = 
+                        `Found ${totalMatches} matches in ${this.searchResults.length} segments`;
+                } else {
+                    document.getElementById('searchResults').textContent = `No matches found for "${query}"`;
+                }
+            }
+
+            jumpToNextMatch() {
+                if (this.searchResults.length === 0) return;
+
+                const currentTime = this.audioPlayer.currentTime;
+                const nextResult = this.searchResults.find(result => result.segment.startTime > currentTime) || 
+                                  this.searchResults[0];
+
+                this.jumpToTime(nextResult.segment.startTime);
+            }
+
+            jumpToTime(time) {
+                this.audioPlayer.currentTime = time;
+                if (this.audioPlayer.paused) {
+                    this.audioPlayer.play();
+                    this.updatePlayPauseButton(false);
+                }
+            }
+
+            formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            togglePlayPause() {
+                if (this.audioPlayer.paused) {
+                    this.audioPlayer.play();
+                    this.updatePlayPauseButton(false);
+                } else {
+                    this.audioPlayer.pause();
+                    this.updatePlayPauseButton(true);
+                }
+            }
+
+            updatePlayPauseButton(isPaused) {
+                const btn = document.getElementById('playPause');
+                btn.innerHTML = isPaused ? '<i class="fas fa-play"></i> Play' : '<i class="fas fa-pause"></i> Pause';
+            }
+
+            skipTime(seconds) {
+                this.audioPlayer.currentTime = Math.max(0, this.audioPlayer.currentTime + seconds);
+            }
+
+            toggleAutoScroll() {
+                const btn = document.getElementById('autoScroll');
+                this.settings.autoScroll = !this.settings.autoScroll;
+                btn.classList.toggle('active', this.settings.autoScroll);
+                btn.innerHTML = this.settings.autoScroll ? 
+                    '<i class="fas fa-sync"></i> Auto-scroll' : 
+                    '<i class="fas fa-hand-pointer"></i> Manual';
+                
+                // Update toggle switch
+                document.getElementById('autoscrollToggle').classList.toggle('active', this.settings.autoScroll);
+            }
+
+            applyFilters() {
+                this.renderTranscript();
+            }
+
+            toggleSetting(element, setting) {
+                this.settings[setting] = !this.settings[setting];
+                element.classList.toggle('active', this.settings[setting]);
+                
+                if (setting === 'showConfidence' || setting === 'showTopics') {
+                    this.renderTranscript();
+                }
+            }
+
+            updateTotalTime() {
+                const duration = this.audioPlayer.duration;
+                if (!isNaN(duration)) {
+                    document.getElementById('totalTime').textContent = this.formatTime(duration);
+                }
+            }
+
+            exportTranscript(format) {
+                let content = '';
+                let filename = '';
+                let mimeType = '';
+
+                switch (format) {
+                    case 'txt':
+                        content = this.generateTxtExport();
+                        filename = 'transcript.txt';
+                        mimeType = 'text/plain';
+                        break;
+                    case 'json':
+                        content = this.generateJsonExport();
+                        filename = 'transcript.json';
+                        mimeType = 'application/json';
+                        break;
+                    case 'srt':
+                        content = this.generateSrtExport();
+                        filename = 'transcript.srt';
+                        mimeType = 'text/plain';
+                        break;
+                }
+
+                this.downloadFile(content, filename, mimeType);
+            }
+
+            generateTxtExport() {
+                let content = 'PODCAST TRANSCRIPT\n';
+                content += '===================\n\n';
+                content += `Episode: AI & The Future of Work\n`;
+                content += `Date: ${new Date().toLocaleDateString()}\n\n`;
+
+                this.transcriptData.forEach(segment => {
+                    content += `[${this.formatTime(segment.startTime)}] ${segment.speaker}: ${segment.text}\n\n`;
+                });
+
+                return content;
+            }
+
+            generateJsonExport() {
+                const exportData = {
+                    metadata: {
+                        title: 'AI & The Future of Work',
+                        exportDate: new Date().toISOString(),
+                        totalSegments: this.transcriptData.length,
+                        duration: this.formatTime(this.audioPlayer.duration || 2730)
+                    },
+                    transcript: this.transcriptData
+                };
+
+                return JSON.stringify(exportData, null, 2);
+            }
+
+            generateSrtExport() {
+                let content = '';
+                
+                this.transcriptData.forEach((segment, index) => {
+                    const startTime = this.formatSrtTime(segment.startTime);
+                    const endTime = this.formatSrtTime(segment.endTime);
+                    
+                    content += `${index + 1}\n`;
+                    content += `${startTime} --> ${endTime}\n`;
+                    content += `${segment.speaker}: ${segment.text}\n\n`;
+                });
+
+                return content;
+            }
+
+            formatSrtTime(seconds) {
+                const hrs = Math.floor(seconds / 3600);
+                const mins = Math.floor((seconds % 3600) / 60);
+                const secs = Math.floor(seconds % 60);
+                const ms = Math.floor((seconds % 1) * 1000);
+                
+                return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+            }
+
+            downloadFile(content, filename, mimeType) {
+                const blob = new Blob([content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                // Show notification
+                alert(`Exported transcript as ${filename}`);
+            }
+
+            updateStats() {
+                const totalWords = this.transcriptData.reduce((sum, segment) => sum + segment.wordCount, 0);
+                const totalDuration = Math.max(...this.transcriptData.map(s => s.endTime)) || 2730;
+                const wpm = Math.round(totalWords / (totalDuration / 60));
+
+                document.getElementById('totalSegments').textContent = this.transcriptData.length;
+                document.getElementById('wordsPerMinute').textContent = wpm;
+            }
+
+            handleKeyboardShortcuts(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+                switch (e.key) {
+                    case ' ':
+                        e.preventDefault();
+                        this.togglePlayPause();
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        this.skipTime(-15);
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        this.skipTime(30);
+                        break;
+                    case 'f':
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            document.getElementById('searchInput').focus();
+                        }
+                        break;
+                    case 'Escape':
+                        document.getElementById('searchInput').value = '';
+                        this.handleSearch('');
+                        document.getElementById('searchInput').blur();
+                        break;
+                }
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            window.transcriptViewer = new PodcastTranscriptViewer();
+            
+            // Add helpful tooltips
+            const tooltips = {
+                'searchInput': 'Search transcript content. Press Enter to jump to next match.',
+                'rewind15': 'Skip backward 15 seconds (or use left arrow key)',
+                'forward30': 'Skip forward 30 seconds (or use right arrow key)',
+                'autoScroll': 'Toggle automatic scrolling to current segment'
+            };
+            
+            Object.entries(tooltips).forEach(([id, text]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.title = text;
+                }
+            });
+            
+            console.log('🎧 Professional Podcast Transcript Viewer initialized successfully!');
+        });
+
+        // Responsive canvas
+        function handleResize() {
+            const canvas = document.getElementById('waveformCanvas');
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            if (window.transcriptViewer) {
+                window.transcriptViewer.generateWaveform();
+            }
+        }
+
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('load', handleResize);
+    </script>
+</body>
+</html>
