@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Podcast Transcript Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #007AFF;
+            --secondary-color: #5856D6;
+            --accent-color: #FF3B30;
+            --text-primary: #1D1D1F;
+            --text-secondary: #86868B;
+            --background: #F5F5F7;
+            --surface: #FFFFFF;
+            --border: #E5E5E7;
+            --hover: #F2F2F7;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            min-height: 100vh;
+        }
+
+        .main-content {
+            background: var(--surface);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+        }
+
+        .episode-info {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .controls-section {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 30px;
+        }
+
+        .audio-player {
+            background: var(--hover);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .player-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .play-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.2rem;
+        }
+
+        .play-btn:hover {
+            background: #0056CC;
+            transform: scale(1.05);
+        }
+
+        .time-info {
+            display: flex;
+            gap: 10px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        .progress-container {
+            position: relative;
+            height: 6px;
+            background: #E0E0E0;
+            border-radius: 3px;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: 3px;
+            transition: width 0.1s ease;
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: -3px;
+            width: 12px;
+            height: 12px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+        }
+
+        .search-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            background: var(--surface);
+            transition: border-color 0.2s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .speed-control {
+            padding: 8px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .speed-control:hover {
+            border-color: var(--primary-color);
+        }
+
+        .transcript-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            max-height: calc(100vh - 400px);
+        }
+
+        .transcript-segment {
+            display: flex;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .transcript-segment:hover {
+            background: var(--hover);
+            transform: translateX(4px);
+        }
+
+        .transcript-segment.active {
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.1), rgba(88, 86, 214, 0.1));
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 20px rgba(0, 122, 255, 0.15);
+        }
+
+        .transcript-segment.highlighted {
+            animation: highlight-pulse 1s ease-in-out;
+        }
+
+        @keyframes highlight-pulse {
+            0%, 100% { background: var(--hover); }
+            50% { background: rgba(255, 59, 48, 0.1); }
+        }
+
+        .timestamp {
+            min-width: 80px;
+            color: var(--primary-color);
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.9rem;
+            margin-right: 20px;
+            padding: 4px 8px;
+            background: rgba(0, 122, 255, 0.1);
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .speaker {
+            min-width: 100px;
+            font-weight: 600;
+            margin-right: 15px;
+            color: var(--secondary-color);
+        }
+
+        .text {
+            flex: 1;
+            line-height: 1.7;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-panel {
+            background: var(--surface);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: var(--hover);
+            padding: 20px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-content {
+            padding: 20px;
+        }
+
+        .chapters-list {
+            list-style: none;
+        }
+
+        .chapter-item {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .chapter-item:last-child {
+            border-bottom: none;
+        }
+
+        .chapter-item:hover {
+            color: var(--primary-color);
+            transform: translateX(4px);
+        }
+
+        .chapter-time {
+            font-family: 'SF Mono', Monaco, monospace;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--hover);
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .keywords-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .keyword-tag {
+            padding: 6px 12px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .keyword-tag:hover {
+            background: #0056CC;
+            transform: scale(1.05);
+        }
+
+        .sentiment-indicator {
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(90deg, 
+                var(--accent-color) 0%, 
+                #FF9500 50%, 
+                #34C759 100%);
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .export-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .export-btn:hover {
+            background: #4B49CC;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .sidebar {
+                order: -1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .transcript-segment {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .timestamp, .speaker {
+                min-width: auto;
+            }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .search-result {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: background-color 0.2s ease;
+        }
+
+        .search-result:hover {
+            background: var(--hover);
+        }
+
+        .search-result:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <div class="header">
+                <h1>Tech Talk Podcast</h1>
+                <div class="episode-info">Episode 42: The Future of AI in Design</div>
+            </div>
+
+            <div class="controls-section">
+                <div class="audio-player">
+                    <div class="player-controls">
+                        <button class="play-btn" id="playBtn">▶</button>
+                        <div class="time-info">
+                            <span id="currentTime">00:00</span>
+                            <span>/</span>
+                            <span id="totalTime">45:32</span>
+                        </div>
+                    </div>
+                    <div class="progress-container" id="progressContainer">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                </div>
+
+                <div class="search-controls">
+                    <div style="position: relative; flex: 1;">
+                        <input type="text" class="search-input" id="searchInput" placeholder="Search transcript...">
+                        <div class="search-results" id="searchResults" style="display: none;"></div>
+                    </div>
+                    <select class="speed-control" id="speedControl">
+                        <option value="0.5">0.5x</option>
+                        <option value="0.75">0.75x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2x</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="transcript-container" id="transcriptContainer">
+                <div class="loading">Loading transcript...</div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="sidebar-panel">
+                <div class="panel-header">Chapters</div>
+                <div class="panel-content">
+                    <ul class="chapters-list" id="chaptersList">
+                        <li class="chapter-item" data-time="0">
+                            <div>Introduction</div>
+                            <div class="chapter-time">00:00</div>
+                        </li>
+                        <li class="chapter-item" data-time="300">
+                            <div>AI in Creative Industries</div>
+                            <div class="chapter-time">05:00</div>
+                        </li>
+                        <li class="chapter-item" data-time="900">
+                            <div>Design Tools Evolution</div>
+                            <div class="chapter-time">15:00</div>
+                        </li>
+                        <li class="chapter-item" data-time="1800">
+                            <div>Future Predictions</div>
+                            <div class="chapter-time">30:00</div>
+                        </li>
+                        <li class="chapter-item" data-time="2400">
+                            <div>Q&A Session</div>
+                            <div class="chapter-time">40:00</div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="sidebar-panel">
+                <div class="panel-header">Analytics</div>
+                <div class="panel-content">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value">45:32</div>
+                            <div class="stat-label">Duration</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">2.1K</div>
+                            <div class="stat-label">Words</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">3</div>
+                            <div class="stat-label">Speakers</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">92%</div>
+                            <div class="stat-label">Accuracy</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <div style="margin-bottom: 5px; color: var(--text-secondary);">Sentiment</div>
+                        <div class="sentiment-indicator"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-panel">
+                <div class="panel-header">Key Topics</div>
+                <div class="panel-content">
+                    <div class="keywords-list">
+                        <span class="keyword-tag">AI Design</span>
+                        <span class="keyword-tag">Machine Learning</span>
+                        <span class="keyword-tag">Creative Tools</span>
+                        <span class="keyword-tag">User Experience</span>
+                        <span class="keyword-tag">Automation</span>
+                        <span class="keyword-tag">Innovation</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-panel">
+                <div class="panel-header">Export</div>
+                <div class="panel-content">
+                    <button class="export-btn" onclick="exportTranscript()">Export Transcript</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class PodcastTranscriptViewer {
+            constructor() {
+                this.currentTime = 0;
+                this.totalTime = 2732; // 45:32 in seconds
+                this.isPlaying = false;
+                this.playbackRate = 1;
+                this.transcriptData = [];
+                this.currentSegmentIndex = -1;
+                
+                this.initializeElements();
+                this.loadTranscriptData();
+                this.setupEventListeners();
+                this.startTimeUpdate();
+            }
+
+            initializeElements() {
+                this.playBtn = document.getElementById('playBtn');
+                this.currentTimeEl = document.getElementById('currentTime');
+                this.progressBar = document.getElementById('progressBar');
+                this.progressContainer = document.getElementById('progressContainer');
+                this.transcriptContainer = document.getElementById('transcriptContainer');
+                this.searchInput = document.getElementById('searchInput');
+                this.searchResults = document.getElementById('searchResults');
+                this.speedControl = document.getElementById('speedControl');
+            }
+
+            loadTranscriptData() {
+                // Simulated transcript data - in real app, this would come from API
+                this.transcriptData = [
+                    { time: 0, speaker: "Host", text: "Welcome to Tech Talk Podcast! I'm your host Sarah, and today we're diving deep into the fascinating world of AI in design." },
+                    { time: 15, speaker: "Host", text: "Joining me today are two incredible experts: Alex Chen, a UX researcher at a leading tech company, and Dr. Maria Rodriguez, an AI ethics professor." },
+                    { time: 35, speaker: "Alex", text: "Thanks for having me, Sarah. I'm excited to share insights about how AI is transforming the creative process." },
+                    { time: 45, speaker: "Dr. Rodriguez", text: "Absolutely! The intersection of artificial intelligence and human creativity raises some fascinating questions about the future of design." },
+                    { time: 65, speaker: "Host", text: "Let's start with the basics. Alex, can you explain how AI is currently being used in design tools?" },
+                    { time: 75, speaker: "Alex", text: "Sure! We're seeing AI integrated into everything from automated layout suggestions to color palette generation. Tools like Figma and Adobe are incorporating machine learning to help designers work more efficiently." },
+                    { time: 105, speaker: "Alex", text: "For example, AI can analyze thousands of successful designs to suggest optimal spacing, typography choices, and even predict user engagement with different interface elements." },
+                    { time: 125, speaker: "Dr. Rodriguez", text: "That's fascinating, but we also need to consider the implications. Are we creating a homogenization of design when AI learns from existing patterns?" },
+                    { time: 145, speaker: "Host", text: "That's a great point, Maria. How do we balance efficiency with creativity and originality?" },
+                    { time: 155, speaker: "Alex", text: "I think the key is using AI as a collaborative partner, not a replacement. The best results come when human creativity guides AI capabilities." },
+                    { time: 175, speaker: "Dr. Rodriguez", text: "Exactly. We need to ensure that AI amplifies human creativity rather than constraining it to predetermined patterns." },
+                    { time: 195, speaker: "Host", text: "Speaking of the future, what trends do you see emerging in AI-powered design tools?" },
+                    { time: 205, speaker: "Alex", text: "One exciting development is context-aware design assistance. AI systems that understand user behavior patterns and can suggest personalized interface modifications." },
+                    { time: 225, speaker: "Alex", text: "We're also seeing advances in multimodal AI that can work with text, images, and even voice commands to create more intuitive design workflows." },
+                    { time: 245, speaker: "Dr. Rodriguez", text: "And let's not forget about accessibility. AI has tremendous potential to automatically optimize designs for different abilities and needs." },
+                    { time: 265, speaker: "Host", text: "That's incredibly important. How can designers ensure they're using AI responsibly in their work?" },
+                    { time: 275, speaker: "Dr. Rodriguez", text: "First, we need transparency about how AI systems make decisions. Designers should understand the biases inherent in training data." },
+                    { time: 295, speaker: "Alex", text: "I'd add that continuous human oversight is crucial. AI should enhance human judgment, not replace it entirely." },
+                    { time: 315, speaker: "Host", text: "Before we wrap up, what advice would you give to designers who are just starting to explore AI tools?" },
+                    { time: 325, speaker: "Alex", text: "Start small and experiment. Try incorporating one AI-powered feature into your workflow and see how it affects your creative process." },
+                    { time: 345, speaker: "Dr. Rodriguez", text: "And always maintain your critical thinking. Question AI suggestions and ensure they align with your design goals and ethical standards." },
+                    { time: 365, speaker: "Host", text: "Wonderful advice from both of you. Thank you Alex and Maria for this insightful conversation about the future of AI in design." },
+                    { time: 380, speaker: "Host", text: "That's all for today's episode of Tech Talk Podcast. Don't forget to subscribe and leave us a review. Until next time, keep innovating!" }
+                ];
+
+                this.renderTranscript();
+            }
+
+            renderTranscript() {
+                const container = this.transcriptContainer;
+                container.innerHTML = '';
+
+                this.transcriptData.forEach((segment, index) => {
+                    const segmentEl = document.createElement('div');
+                    segmentEl.className = 'transcript-segment';
+                    segmentEl.dataset.index = index;
+                    segmentEl.dataset.time = segment.time;
+
+                    segmentEl.innerHTML = `
+                        <div class="timestamp">${this.formatTime(segment.time)}</div>
+                        <div class="speaker">${segment.speaker}</div>
+                        <div class="text">${segment.text}</div>
+                    `;
+
+                    segmentEl.addEventListener('click', () => this.seekToTime(segment.time));
+                    container.appendChild(segmentEl);
+                });
+            }
+
+            setupEventListeners() {
+                this.playBtn.addEventListener('click', () => this.togglePlayback());
+                
+                this.progressContainer.addEventListener('click', (e) => {
+                    const rect = this.progressContainer.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const percentage = clickX / rect.width;
+                    const targetTime = percentage * this.totalTime;
+                    this.seekToTime(targetTime);
+                });
+
+                this.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+                this.searchInput.addEventListener('focus', () => this.searchResults.style.display = 'block');
+                this.searchInput.addEventListener('blur', () => {
+                    setTimeout(() => this.searchResults.style.display = 'none', 200);
+                });
+
+                this.speedControl.addEventListener('change', (e) => {
+                    this.playbackRate = parseFloat(e.target.value);
+                });
+
+                // Chapter navigation
+                document.getElementById('chaptersList').addEventListener('click', (e) => {
+                    if (e.target.closest('.chapter-item')) {
+                        const time = parseInt(e.target.closest('.chapter-item').dataset.time);
+                        this.seekToTime(time);
+                    }
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.tagName === 'INPUT') return;
+                    
+                    switch(e.code) {
+                        case 'Space':
+                            e.preventDefault();
+                            this.togglePlayback();
+                            break;
+                        case 'ArrowLeft':
+                            e.preventDefault();
+                            this.seekToTime(Math.max(0, this.currentTime - 10));
+                            break;
+                        case 'ArrowRight':
+                            e.preventDefault();
+                            this.seekToTime(Math.min(this.totalTime, this.currentTime + 10));
+                            break;
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            this.changeSpeed(0.25);
+                            break;
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            this.changeSpeed(-0.25);
+                            break;
+                    }
+                });
+            }
+
+            togglePlayback() {
+                this.isPlaying = !this.isPlaying;
+                this.playBtn.textContent = this.isPlaying ? '⏸' : '▶';
+                this.playBtn.style.background = this.isPlaying ? '#FF3B30' : '#007AFF';
+            }
+
+            seekToTime(time) {
+                this.currentTime = Math.max(0, Math.min(time, this.totalTime));
+                this.updateProgress();
+                this.updateActiveSegment();
+                this.scrollToActiveSegment();
+            }
+
+            startTimeUpdate() {
+                setInterval(() => {
+                    if (this.isPlaying) {
+                        this.currentTime += this.playbackRate;
+                        if (this.currentTime >= this.totalTime) {
+                            this.currentTime = this.totalTime;
+                            this.isPlaying = false;
+                            this.playBtn.textContent = '▶';
+                            this.playBtn.style.background = '#007AFF';
+                        }
+                        this.updateProgress();
+                        this.updateActiveSegment();
+                    }
+                }, 1000);
+            }
+
+            updateProgress() {
+                const percentage = (this.currentTime / this.totalTime) * 100;
+                this.progressBar.style.width = percentage + '%';
+                this.currentTimeEl.textContent = this.formatTime(this.currentTime);
+            }
+
+            updateActiveSegment() {
+                const segments = document.querySelectorAll('.transcript-segment');
+                let activeIndex = -1;
+
+                // Find the current active segment
+                for (let i = this.transcriptData.length - 1; i >= 0; i--) {
+                    if (this.currentTime >= this.transcriptData[i].time) {
+                        activeIndex = i;
+                        break;
+                    }
+                }
+
+                // Update visual indicators
+                segments.forEach((segment, index) => {
+                    segment.classList.remove('active');
+                    if (index === activeIndex) {
+                        segment.classList.add('active');
+                    }
+                });
+
+                this.currentSegmentIndex = activeIndex;
+            }
+
+            scrollToActiveSegment() {
+                const activeSegment = document.querySelector('.transcript-segment.active');
+                if (activeSegment) {
+                    activeSegment.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                }
+            }
+
+            handleSearch(query) {
+                if (!query.trim()) {
+                    this.searchResults.style.display = 'none';
+                    return;
+                }
+
+                const results = this.transcriptData.filter((segment, index) => 
+                    segment.text.toLowerCase().includes(query.toLowerCase()) ||
+                    segment.speaker.toLowerCase().includes(query.toLowerCase())
+                ).slice(0, 5);
+
+                if (results.length === 0) {
+                    this.searchResults.innerHTML = '<div class="search-result">No results found</div>';
+                    this.searchResults.style.display = 'block';
+                    return;
+                }
+
+                this.searchResults.innerHTML = results.map(segment => {
+                    const highlightedText = this.highlightSearchTerm(segment.text, query);
+                    return `
+                        <div class="search-result" data-time="${segment.time}">
+                            <strong>${segment.speaker}</strong> (${this.formatTime(segment.time)})
+                            <div>${highlightedText}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                this.searchResults.style.display = 'block';
+
+                // Add click handlers
+                this.searchResults.addEventListener('click', (e) => {
+                    const result = e.target.closest('.search-result');
+                    if (result) {
+                        const time = parseInt(result.dataset.time);
+                        this.seekToTime(time);
+                        this.highlightSegment(time);
+                        this.searchResults.style.display = 'none';
+                        this.searchInput.value = '';
+                    }
+                });
+            }
+
+            highlightSearchTerm(text, term) {
+                const regex = new RegExp(`(${term})`, 'gi');
+                return text.replace(regex, '<mark style="background: yellow; padding: 0 2px;">$1</mark>');
+            }
+
+            highlightSegment(time) {
+                const segment = document.querySelector(`[data-time="${time}"]`);
+                if (segment) {
+                    segment.classList.add('highlighted');
+                    setTimeout(() => segment.classList.remove('highlighted'), 2000);
+                }
+            }
+
+            changeSpeed(delta) {
+                const newSpeed = Math.max(0.25, Math.min(2, this.playbackRate + delta));
+                this.playbackRate = newSpeed;
+                this.speedControl.value = newSpeed;
+            }
+
+            formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            exportTranscript() {
+                const transcriptText = this.transcriptData.map(segment => 
+                    `[${this.formatTime(segment.time)}] ${segment.speaker}: ${segment.text}`
+                ).join('\n\n');
+
+                const blob = new Blob([transcriptText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'podcast-transcript.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            // Advanced features
+            generateWordCloud() {
+                const allWords = this.transcriptData
+                    .map(segment => segment.text)
+                    .join(' ')
+                    .toLowerCase()
+                    .replace(/[^\w\s]/g, '')
+                    .split(/\s+/)
+                    .filter(word => word.length > 3);
+
+                const wordFreq = {};
+                allWords.forEach(word => {
+                    wordFreq[word] = (wordFreq[word] || 0) + 1;
+                });
+
+                return Object.entries(wordFreq)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 20);
+            }
+
+            analyzeLength() {
+                return this.transcriptData.reduce((total, segment) => {
+                    return total + segment.text.split(' ').length;
+                }, 0);
+            }
+
+            detectSpeakerChanges() {
+                let changes = 0;
+                for (let i = 1; i < this.transcriptData.length; i++) {
+                    if (this.transcriptData[i].speaker !== this.transcriptData[i-1].speaker) {
+                        changes++;
+                    }
+                }
+                return changes;
+            }
+
+            // Real-time features simulation
+            simulateRealTimeHighlight() {
+                if (!this.isPlaying) return;
+
+                const currentSegment = this.transcriptData[this.currentSegmentIndex];
+                if (!currentSegment) return;
+
+                const words = currentSegment.text.split(' ');
+                const segmentDuration = this.currentSegmentIndex < this.transcriptData.length - 1 
+                    ? this.transcriptData[this.currentSegmentIndex + 1].time - currentSegment.time
+                    : 10;
+
+                const wordsPerSecond = words.length / segmentDuration;
+                const elapsedInSegment = this.currentTime - currentSegment.time;
+                const currentWordIndex = Math.floor(elapsedInSegment * wordsPerSecond);
+
+                // This would highlight individual words in a real implementation
+                // For demo purposes, we'll just add a visual indicator
+                const activeSegmentEl = document.querySelector('.transcript-segment.active .text');
+                if (activeSegmentEl) {
+                    const progress = Math.min(1, elapsedInSegment / segmentDuration);
+                    activeSegmentEl.style.background = `linear-gradient(90deg, 
+                        rgba(0, 122, 255, 0.1) ${progress * 100}%, 
+                        transparent ${progress * 100}%)`;
+                }
+            }
+
+            // Auto-scroll functionality
+            enableAutoScroll() {
+                setInterval(() => {
+                    if (this.isPlaying) {
+                        this.simulateRealTimeHighlight();
+                    }
+                }, 100);
+            }
+        }
+
+        // Additional utility functions
+        function exportTranscript() {
+            if (window.podcastViewer) {
+                window.podcastViewer.exportTranscript();
+            }
+        }
+
+        // Theme switching functionality
+        function toggleTheme() {
+            const root = document.documentElement;
+            const currentTheme = root.style.getPropertyValue('--background') || '#F5F5F7';
+            
+            if (currentTheme === '#F5F5F7') {
+                // Switch to dark theme
+                root.style.setProperty('--background', '#000000');
+                root.style.setProperty('--surface', '#1C1C1E');
+                root.style.setProperty('--text-primary', '#FFFFFF');
+                root.style.setProperty('--text-secondary', '#8E8E93');
+                root.style.setProperty('--border', '#38383A');
+                root.style.setProperty('--hover', '#2C2C2E');
+            } else {
+                // Switch to light theme
+                root.style.setProperty('--background', '#F5F5F7');
+                root.style.setProperty('--surface', '#FFFFFF');
+                root.style.setProperty('--text-primary', '#1D1D1F');
+                root.style.setProperty('--text-secondary', '#86868B');
+                root.style.setProperty('--border', '#E5E5E7');
+                root.style.setProperty('--hover', '#F2F2F7');
+            }
+        }
+
+        // Enhanced analytics
+        class PodcastAnalytics {
+            constructor(transcriptData) {
+                this.data = transcriptData;
+                this.updateStats();
+            }
+
+            updateStats() {
+                const totalWords = this.data.reduce((sum, segment) => 
+                    sum + segment.text.split(' ').length, 0);
+                
+                const speakers = [...new Set(this.data.map(s => s.speaker))];
+                const speakerStats = {};
+                
+                speakers.forEach(speaker => {
+                    const segments = this.data.filter(s => s.speaker === speaker);
+                    const words = segments.reduce((sum, s) => sum + s.text.split(' ').length, 0);
+                    speakerStats[speaker] = {
+                        segments: segments.length,
+                        words: words,
+                        percentage: ((words / totalWords) * 100).toFixed(1)
+                    };
+                });
+
+                this.stats = {
+                    totalWords,
+                    speakers: speakerStats,
+                    averageWordsPerSegment: Math.round(totalWords / this.data.length),
+                    longestSegment: Math.max(...this.data.map(s => s.text.length))
+                };
+            }
+
+            getSentimentAnalysis() {
+                // Simplified sentiment analysis
+                const positiveWords = ['great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'love', 'perfect', 'awesome'];
+                const negativeWords = ['bad', 'terrible', 'awful', 'hate', 'horrible', 'worst', 'disappointing'];
+                
+                let positive = 0, negative = 0, total = 0;
+                
+                this.data.forEach(segment => {
+                    const words = segment.text.toLowerCase().split(' ');
+                    words.forEach(word => {
+                        if (positiveWords.includes(word)) positive++;
+                        if (negativeWords.includes(word)) negative++;
+                        total++;
+                    });
+                });
+                
+                return {
+                    positive: ((positive / total) * 100).toFixed(1),
+                    negative: ((negative / total) * 100).toFixed(1),
+                    neutral: (((total - positive - negative) / total) * 100).toFixed(1)
+                };
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            window.podcastViewer = new PodcastTranscriptViewer();
+            window.podcastViewer.enableAutoScroll();
+            
+            // Add theme toggle button
+            const themeToggle = document.createElement('button');
+            themeToggle.innerHTML = '🌓';
+            themeToggle.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                border: none;
+                background: var(--surface);
+                box-shadow: var(--shadow);
+                cursor: pointer;
+                font-size: 1.5rem;
+                z-index: 1000;
+                transition: all 0.2s ease;
+            `;
+            themeToggle.addEventListener('click', toggleTheme);
+            themeToggle.addEventListener('mouseenter', () => {
+                themeToggle.style.transform = 'scale(1.1)';
+            });
+            themeToggle.addEventListener('mouseleave', () => {
+                themeToggle.style.transform = 'scale(1)';
+            });
+            document.body.appendChild(themeToggle);
+
+            // Add analytics
+            setTimeout(() => {
+                const analytics = new PodcastAnalytics(window.podcastViewer.transcriptData);
+                console.log('Podcast Analytics:', analytics.stats);
+                console.log('Sentiment Analysis:', analytics.getSentimentAnalysis());
+            }, 1000);
+
+            // Add loading animation
+            const loadingEl = document.querySelector('.loading');
+            if (loadingEl) {
+                setTimeout(() => {
+                    loadingEl.style.opacity = '0';
+                    setTimeout(() => loadingEl.remove(), 500);
+                }, 1500);
+            }
+
+            // Performance monitoring
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.transform = 'translateX(0)';
+                        entry.target.style.opacity = '1';
+                    }
+                });
+            });
+
+            // Observe transcript segments for smooth animations
+            setTimeout(() => {
+                document.querySelectorAll('.transcript-segment').forEach(segment => {
+                    segment.style.transform = 'translateX(-20px)';
+                    segment.style.opacity = '0.7';
+                    segment.style.transition = 'all 0.3s ease';
+                    observer.observe(segment);
+                });
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
