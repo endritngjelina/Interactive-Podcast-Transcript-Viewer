@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Podcast Transcript Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #007AFF;
+            --secondary-color: #5856D6;
+            --accent-color: #FF3B30;
+            --text-primary: #1D1D1F;
+            --text-secondary: #86868B;
+            --background: #F5F5F7;
+            --surface: #FFFFFF;
+            --border: #E5E5E7;
+            --hover: #F2F2F7;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            min-height: 100vh;
+        }
+
+        .main-content {
+            background: var(--surface);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+        }
+
+        .episode-info {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .controls-section {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 30px;
+        }
+
+        .audio-player {
+            background: var(--hover);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .player-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .play-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), #0056CC);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1.3rem;
+            box-shadow: 0 4px 20px rgba(0, 122, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .play-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .play-btn:hover::before {
+            left: 100%;
+        }
+
+        .play-btn:hover {
+            background: linear-gradient(135deg, #0056CC, var(--secondary-color));
+            transform: scale(1.08) translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 122, 255, 0.4);
+        }
+
+        .play-btn:active {
+            transform: scale(1.02) translateY(0px);
+            transition: all 0.1s ease;
+        }
+
+        .time-info {
+            display: flex;
+            gap: 10px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        .progress-container {
+            position: relative;
+            height: 8px;
+            background: linear-gradient(90deg, #E0E0E0, #F0F0F0);
+            border-radius: 4px;
+            cursor: pointer;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .progress-container:hover {
+            height: 10px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 122, 255, 0.2);
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), #FF9500);
+            border-radius: 4px;
+            transition: width 0.1s ease;
+            position: relative;
+            box-shadow: 0 0 10px rgba(0, 122, 255, 0.3);
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: -4px;
+            width: 16px;
+            height: 16px;
+            background: radial-gradient(circle, var(--primary-color), #0056CC);
+            border-radius: 50%;
+            box-shadow: 0 2px 12px rgba(0, 122, 255, 0.4);
+            opacity: 0;
+            transition: all 0.2s ease;
+        }
+
+        .progress-container:hover .progress-bar::after {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+
+        .search-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 1rem;
+            background: var(--surface);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1), inset 0 1px 3px rgba(0, 0, 0, 0.05);
+            transform: translateY(-1px);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+            font-weight: 400;
+            transition: color 0.2s ease;
+        }
+
+        .search-input:focus::placeholder {
+            color: transparent;
+        }
+
+        .speed-control {
+            padding: 12px 18px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            color: var(--text-primary);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+            min-width: 80px;
+        }
+
+        .speed-control:hover {
+            border-color: var(--primary-color);
+            background: var(--hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .speed-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+        }
+
+        .transcript-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            max-height: calc(100vh - 400px);
+        }
+
+        .transcript-segment {
+            display: flex;
+            margin-bottom: 16px;
+            padding: 18px;
+            border-radius: 16px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .transcript-segment::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 122, 255, 0.1), transparent);
+            transition: left 0.6s ease;
+            z-index: 0;
+        }
+
+        .transcript-segment > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .transcript-segment:hover::before {
+            left: 100%;
+        }
+
+        .transcript-segment:hover {
+            background: linear-gradient(135deg, var(--hover), rgba(0, 122, 255, 0.05));
+            transform: translateX(8px) translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border-color: rgba(0, 122, 255, 0.2);
+        }
+
+        .transcript-segment.active {
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.1), rgba(88, 86, 214, 0.1));
+            border-color: var(--primary-color);
+            box-shadow: 0 8px 30px rgba(0, 122, 255, 0.2);
+            transform: translateX(4px);
+        }
+
+        .transcript-segment.active::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            border-radius: 0 2px 2px 0;
+            box-shadow: 0 0 10px rgba(0, 122, 255, 0.5);
+        }
+
+        .transcript-segment.highlighted {
+            animation: highlight-pulse 2s ease-in-out;
+        }
+
+        @keyframes highlight-pulse {
+            0%, 100% { 
+                background: var(--hover); 
+                transform: translateX(0);
+            }
+            25% { 
+                background: rgba(255, 59, 48, 0.15); 
+                transform: translateX(12px) scale(1.02);
+            }
+            50% { 
+                background: rgba(0, 122, 255, 0.15);
+                transform: translateX(8px) scale(1.01);
+            }
+            75% { 
+                background: rgba(88, 86, 214, 0.15);
+                transform: translateX(4px);
+            }
+        }
+
+        .timestamp {
+            min-width: 85px;
+            color: var(--primary-color);
+            font-weight: 700;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.9rem;
+            margin-right: 20px;
+            padding: 6px 12px;
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.1), rgba(0, 122, 255, 0.05));
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(0, 122, 255, 0.2);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.1);
+        }
+
+        .transcript-segment:hover .timestamp {
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.2), rgba(0, 122, 255, 0.1));
+            border-color: var(--primary-color);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
+        }
+
+        .speaker {
+            min-width: 110px;
+            font-weight: 700;
+            margin-right: 18px;
+            color: var(--secondary-color);
+            position: relative;
+            padding: 4px 0;
+            transition: all 0.3s ease;
+        }
+
+        .speaker::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+            transition: width 0.3s ease;
+        }
+
+        .transcript-segment:hover .speaker::after {
+            width: 100%;
+        }
+
+        .text {
+            flex: 1;
+            line-height: 1.8;
+            font-weight: 400;
+            letter-spacing: 0.01em;
+            transition: all 0.3s ease;
+        }
+
+        .transcript-segment:hover .text {
+            color: var(--text-primary);
+            letter-spacing: 0.02em;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-panel {
+            background: var(--surface);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .sidebar-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), #FF9500);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-panel:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            border-color: rgba(0, 122, 255, 0.2);
+        }
+
+        .sidebar-panel:hover::before {
+            opacity: 1;
+        }
+
+        .panel-header {
+            background: linear-gradient(135deg, var(--hover), rgba(0, 122, 255, 0.05));
+            padding: 22px;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            letter-spacing: 0.01em;
+        }
+
+        .panel-header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 22px;
+            right: 22px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-panel:hover .panel-header::after {
+            opacity: 1;
+        }
+
+        .panel-content {
+            padding: 24px;
+        }
+
+        .chapters-list {
+            list-style: none;
+        }
+
+        .chapter-item {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+
+        .chapter-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .chapter-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 0;
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            border-radius: 2px;
+            transition: height 0.3s ease;
+        }
+
+        .chapter-item:hover {
+            color: var(--primary-color);
+            transform: translateX(8px);
+            background: rgba(0, 122, 255, 0.05);
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+
+        .chapter-item:hover::before {
+            height: 60%;
+        }
+
+        .chapter-time {
+            font-family: 'SF Mono', Monaco, monospace;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 4px;
+            padding: 2px 6px;
+            background: var(--hover);
+            border-radius: 4px;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .chapter-item:hover .chapter-time {
+            background: rgba(0, 122, 255, 0.1);
+            color: var(--primary-color);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 20px 16px;
+            background: linear-gradient(135deg, var(--hover), rgba(0, 122, 255, 0.05));
+            border-radius: 12px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+            border-color: rgba(0, 122, 255, 0.3);
+        }
+
+        .stat-item:hover::before {
+            opacity: 1;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+            text-shadow: 0 2px 4px rgba(0, 122, 255, 0.1);
+        }
+
+        .stat-item:hover .stat-value {
+            color: var(--secondary-color);
+            transform: scale(1.1);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .keywords-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .keyword-tag {
+            padding: 6px 12px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .keyword-tag:hover {
+            background: #0056CC;
+            transform: scale(1.05);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            margin-top: 8px;
+        }
+
+        .search-result {
+            padding: 16px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .search-result::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            transition: width 0.3s ease;
+        }
+
+        .search-result:hover {
+            background: linear-gradient(135deg, var(--hover), rgba(0, 122, 255, 0.05));
+            transform: translateX(4px);
+        }
+
+        .search-result:hover::before {
+            width: 3px;
+        }
+
+        .search-result:last-child {
+            border-bottom: none;
+        }
+
+        /* Enhanced animations */
+        @keyframes slideInFromLeft {
+            0% {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideInFromRight {
+            0% {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .main-content {
+            animation: slideInFromLeft 0.6s ease-out;
+        }
+
+        .sidebar {
+            animation: slideInFromRight 0.6s ease-out 0.2s both;
+        }
+
+        /* Loading states */
+        .loading {
+            text-align: center;
+            padding: 60px 40px;
+            color: var(--text-secondary);
+            position: relative;
+        }
+
+        .loading::before {
+            content: '';
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            display: inline-block;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Enhanced focus states */
+        .transcript-segment:focus-visible,
+        .chapter-item:focus-visible,
+        .keyword-tag:focus-visible {
+            outline: 3px solid rgba(0, 122, 255, 0.5);
+            outline-offset: 2px;
+        }
+
+        /* Smooth scrollbar styling */
+        .transcript-container::-webkit-scrollbar,
+        .search-results::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .transcript-container::-webkit-scrollbar-track,
+        .search-results::-webkit-scrollbar-track {
+            background: var(--hover);
+            border-radius: 4px;
+        }
+
+        .transcript-container::-webkit-scrollbar-thumb,
+        .search-results::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            border-radius: 4px;
+        }
+
+        .transcript-container::-webkit-scrollbar-thumb:hover,
+        .search-results::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #0056CC, #4B49CC);
+        }
+
+        /* Enhanced mobile responsiveness */
+        @media (max-width: 768px) {
+            .transcript-segment {
+                padding: 16px 12px;
+                margin-bottom: 12px;
+            }
+
+            .timestamp {
+                min-width: 70px;
+                font-size: 0.8rem;
+                padding: 4px 8px;
+            }
+
+            .speaker {
+                min-width: 80px;
+                font-size: 0.9rem;
+            }
+
+            .play-btn {
+                width: 50px;
+                height: 50px;
+            }
+
+            .sidebar-panel {
+                border-radius: 16px;
+            }
+
+            .panel-header {
+                padding: 18px;
+                font-size: 1rem;
+            }
+
+            .panel-content {
+                padding: 18px;
+            }
+        }
+
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* High contrast mode */
+        @media (prefers-contrast: high) {
+            :root {
+                --border: #000000;
+                --text-secondary: #000000;
+            }
+        }
+
+        /* Dark mode enhancements */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background: #000000;
+                --surface: #1C1C1E;
+                --text-primary: #FFFFFF;
+                --text-secondary: #8E8E93;
+                --border: #38383A;
+                --hover: #2C2C2E;
+            }
+        }
+        .sentiment-indicator {
+    width: 100%;
+    height: 12px;
+    background: linear-gradient(
+        90deg, 
+        var(--accent-color) 0%, 
+        #FF9500 25%,
+        #FFCC02 50%,
+        #30D158 75%,
+        #34C759 100%
+    );
+    border-radius: 6px;
+    margin-top: 16px;
+    position: relative;
+    box-shadow: 
+        inset 0 1px 3px rgba(0, 0, 0, 0.1), 
+        0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.sentiment-indicator::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg, 
+        transparent, 
+        rgba(255, 255, 255, 0.3), 
+        transparent
+    );
+    animation: sentiment-shimmer 3s infinite linear;
+}
+
+@keyframes sentiment-shimmer {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000; /* keep above other elements */
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem; /* consistent rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    max-height: 300px;
+    overflow-y: auto;
+    animation: dropdownFade 0.2s ease-out;
+}
+
+/* Subtle dropdown fade-in */
+@keyframes dropdownFade {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <div class="header">
+                <h1>Tech Talk Podcast</h1>
+                <div class="episode-info">Episode 42: The Future of AI in Design</div>
+            </div>
+
+            <div class="controls-section">
+                <div class="audio-player">
+                    <div class="player-controls">
+                        <button class="play-btn" id="playBtn">▶</button>
+                        <div class="time-info">
+                            <span id="currentTime">00:00</span>
+                            <span>/</span>
+                            <span id="totalTime">45:32</span>
+                        </div>
+                    </div>
+                    <div class="progress-container" id="progressContainer">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                </div>
+
+                <div class="search-controls">
+                    <div style="position: relative; flex: 1;">
+                        <input type="text" class="search-input" id="searchInput" placeholder="Search transcript...">
+                        <div class="search-results" id="searchResults" style="display: none;"></div>
+                    </div>
+                    <select class="speed-control" id="speedControl">
+                        <option value="0.5">0.5x</option>
+                        <option value="0.75">0.75x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2x</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="transcript-container" id="transcriptContainer">
+                <div class="loading">Loading transcript...</div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="sidebar-panel">
+                <div class="panel-header">Chapters</div>
+                <div class="panel-content">
+                    <ul class="chapters-list" id="chaptersList">
+                        <li class="chapter-item" data-time="0">
+                            <div>Introduction</div>
+                            <div class="chapter-time">00:00</div>
+                        </li>
+                        <li class="chapter-item" data-time="300">
+                            <div>AI in Creative Industries</div>
+                            <div class="chapter-time">05:00</div>
+                        </li>
+                        <li class="chapter-item" data-time="900">
+                            <div>Design Tools Evolution</div>
+                            <div class="chapter-time">15:00</div>
+                        </li>
+                        <li class="chapter-item" data-time="1800">
+                            <div>Future Predictions</div>
+                            <div class="chapter-time">30:00</div>
+                        </li>
+                        <li class="chapter-item" data-time="2400">
+                            <div>Q&A Session</div>
+                            <div class="chapter-time">40:00</div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="sidebar-panel">
+                <div class="panel-header">Analytics</div>
+                <div class="panel-content">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value">45:32</div>
+                            <div class="stat-label">Duration</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">2.1K</div>
+                            <div class="stat-label">Words</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">3</div>
+                            <div class="stat-label">Speakers</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">92%</div>
+                            <div class="stat-label">Accuracy</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <div style="margin-bottom: 5px; color: var(--text-secondary);">Sentiment</div>
+                        <div class="sentiment-indicator"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-panel">
+                <div class="panel-header">Key Topics</div>
+                <div class="panel-content">
+                    <div class="keywords-list">
+                        <span class="keyword-tag">AI Design</span>
+                        <span class="keyword-tag">Machine Learning</span>
+                        <span class="keyword-tag">Creative Tools</span>
+                        <span class="keyword-tag">User Experience</span>
+                        <span class="keyword-tag">Automation</span>
+                        <span class="keyword-tag">Innovation</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-panel">
+                <div class="panel-header">Export</div>
+                <div class="panel-content">
+                    <button class="export-btn" onclick="exportTranscript()">Export Transcript</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class PodcastTranscriptViewer {
+            constructor() {
+                this.currentTime = 0;
+                this.totalTime = 2732; // 45:32 in seconds
+                this.isPlaying = false;
+                this.playbackRate = 1;
+                this.transcriptData = [];
+                this.currentSegmentIndex = -1;
+                
+                this.initializeElements();
+                this.loadTranscriptData();
+                this.setupEventListeners();
+                this.startTimeUpdate();
+            }
+
+            initializeElements() {
+                this.playBtn = document.getElementById('playBtn');
+                this.currentTimeEl = document.getElementById('currentTime');
+                this.progressBar = document.getElementById('progressBar');
+                this.progressContainer = document.getElementById('progressContainer');
+                this.transcriptContainer = document.getElementById('transcriptContainer');
+                this.searchInput = document.getElementById('searchInput');
+                this.searchResults = document.getElementById('searchResults');
+                this.speedControl = document.getElementById('speedControl');
+            }
+
+            loadTranscriptData() {
+                // Simulated transcript data - in real app, this would come from API
+                this.transcriptData = [
+                    { time: 0, speaker: "Host", text: "Welcome to Tech Talk Podcast! I'm your host Sarah, and today we're diving deep into the fascinating world of AI in design." },
+                    { time: 15, speaker: "Host", text: "Joining me today are two incredible experts: Alex Chen, a UX researcher at a leading tech company, and Dr. Maria Rodriguez, an AI ethics professor." },
+                    { time: 35, speaker: "Alex", text: "Thanks for having me, Sarah. I'm excited to share insights about how AI is transforming the creative process." },
+                    { time: 45, speaker: "Dr. Rodriguez", text: "Absolutely! The intersection of artificial intelligence and human creativity raises some fascinating questions about the future of design." },
+                    { time: 65, speaker: "Host", text: "Let's start with the basics. Alex, can you explain how AI is currently being used in design tools?" },
+                    { time: 75, speaker: "Alex", text: "Sure! We're seeing AI integrated into everything from automated layout suggestions to color palette generation. Tools like Figma and Adobe are incorporating machine learning to help designers work more efficiently." },
+                    { time: 105, speaker: "Alex", text: "For example, AI can analyze thousands of successful designs to suggest optimal spacing, typography choices, and even predict user engagement with different interface elements." },
+                    { time: 125, speaker: "Dr. Rodriguez", text: "That's fascinating, but we also need to consider the implications. Are we creating a homogenization of design when AI learns from existing patterns?" },
+                    { time: 145, speaker: "Host", text: "That's a great point, Maria. How do we balance efficiency with creativity and originality?" },
+                    { time: 155, speaker: "Alex", text: "I think the key is using AI as a collaborative partner, not a replacement. The best results come when human creativity guides AI capabilities." },
+                    { time: 175, speaker: "Dr. Rodriguez", text: "Exactly. We need to ensure that AI amplifies human creativity rather than constraining it to predetermined patterns." },
+                    { time: 195, speaker: "Host", text: "Speaking of the future, what trends do you see emerging in AI-powered design tools?" },
+                    { time: 205, speaker: "Alex", text: "One exciting development is context-aware design assistance. AI systems that understand user behavior patterns and can suggest personalized interface modifications." },
+                    { time: 225, speaker: "Alex", text: "We're also seeing advances in multimodal AI that can work with text, images, and even voice commands to create more intuitive design workflows." },
+                    { time: 245, speaker: "Dr. Rodriguez", text: "And let's not forget about accessibility. AI has tremendous potential to automatically optimize designs for different abilities and needs." },
+                    { time: 265, speaker: "Host", text: "That's incredibly important. How can designers ensure they're using AI responsibly in their work?" },
+                    { time: 275, speaker: "Dr. Rodriguez", text: "First, we need transparency about how AI systems make decisions. Designers should understand the biases inherent in training data." },
+                    { time: 295, speaker: "Alex", text: "I'd add that continuous human oversight is crucial. AI should enhance human judgment, not replace it entirely." },
+                    { time: 315, speaker: "Host", text: "Before we wrap up, what advice would you give to designers who are just starting to explore AI tools?" },
+                    { time: 325, speaker: "Alex", text: "Start small and experiment. Try incorporating one AI-powered feature into your workflow and see how it affects your creative process." },
+                    { time: 345, speaker: "Dr. Rodriguez", text: "And always maintain your critical thinking. Question AI suggestions and ensure they align with your design goals and ethical standards." },
+                    { time: 365, speaker: "Host", text: "Wonderful advice from both of you. Thank you Alex and Maria for this insightful conversation about the future of AI in design." },
+                    { time: 380, speaker: "Host", text: "That's all for today's episode of Tech Talk Podcast. Don't forget to subscribe and leave us a review. Until next time, keep innovating!" }
+                ];
+
+                this.renderTranscript();
+            }
+
+            renderTranscript() {
+                const container = this.transcriptContainer;
+                container.innerHTML = '';
+
+                this.transcriptData.forEach((segment, index) => {
+                    const segmentEl = document.createElement('div');
+                    segmentEl.className = 'transcript-segment';
+                    segmentEl.dataset.index = index;
+                    segmentEl.dataset.time = segment.time;
+
+                    segmentEl.innerHTML = `
+                        <div class="timestamp">${this.formatTime(segment.time)}</div>
+                        <div class="speaker">${segment.speaker}</div>
+                        <div class="text">${segment.text}</div>
+                    `;
+
+                    segmentEl.addEventListener('click', () => this.seekToTime(segment.time));
+                    container.appendChild(segmentEl);
+                });
+            }
+
+            setupEventListeners() {
+                this.playBtn.addEventListener('click', () => this.togglePlayback());
+                
+                this.progressContainer.addEventListener('click', (e) => {
+                    const rect = this.progressContainer.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const percentage = clickX / rect.width;
+                    const targetTime = percentage * this.totalTime;
+                    this.seekToTime(targetTime);
+                });
+
+                this.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+                this.searchInput.addEventListener('focus', () => this.searchResults.style.display = 'block');
+                this.searchInput.addEventListener('blur', () => {
+                    setTimeout(() => this.searchResults.style.display = 'none', 200);
+                });
+
+                this.speedControl.addEventListener('change', (e) => {
+                    this.playbackRate = parseFloat(e.target.value);
+                });
+
+                // Chapter navigation
+                document.getElementById('chaptersList').addEventListener('click', (e) => {
+                    if (e.target.closest('.chapter-item')) {
+                        const time = parseInt(e.target.closest('.chapter-item').dataset.time);
+                        this.seekToTime(time);
+                    }
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.tagName === 'INPUT') return;
+                    
+                    switch(e.code) {
+                        case 'Space':
+                            e.preventDefault();
+                            this.togglePlayback();
+                            break;
+                        case 'ArrowLeft':
+                            e.preventDefault();
+                            this.seekToTime(Math.max(0, this.currentTime - 10));
+                            break;
+                        case 'ArrowRight':
+                            e.preventDefault();
+                            this.seekToTime(Math.min(this.totalTime, this.currentTime + 10));
+                            break;
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            this.changeSpeed(0.25);
+                            break;
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            this.changeSpeed(-0.25);
+                            break;
+                    }
+                });
+            }
+
+            togglePlayback() {
+                this.isPlaying = !this.isPlaying;
+                this.playBtn.textContent = this.isPlaying ? '⏸' : '▶';
+                this.playBtn.style.background = this.isPlaying ? '#FF3B30' : '#007AFF';
+            }
+
+            seekToTime(time) {
+                this.currentTime = Math.max(0, Math.min(time, this.totalTime));
+                this.updateProgress();
+                this.updateActiveSegment();
+                this.scrollToActiveSegment();
+            }
+
+            startTimeUpdate() {
+                setInterval(() => {
+                    if (this.isPlaying) {
+                        this.currentTime += this.playbackRate;
+                        if (this.currentTime >= this.totalTime) {
+                            this.currentTime = this.totalTime;
+                            this.isPlaying = false;
+                            this.playBtn.textContent = '▶';
+                            this.playBtn.style.background = '#007AFF';
+                        }
+                        this.updateProgress();
+                        this.updateActiveSegment();
+                    }
+                }, 1000);
+            }
+
+            updateProgress() {
+                const percentage = (this.currentTime / this.totalTime) * 100;
+                this.progressBar.style.width = percentage + '%';
+                this.currentTimeEl.textContent = this.formatTime(this.currentTime);
+            }
+
+            updateActiveSegment() {
+                const segments = document.querySelectorAll('.transcript-segment');
+                let activeIndex = -1;
+
+                // Find the current active segment
+                for (let i = this.transcriptData.length - 1; i >= 0; i--) {
+                    if (this.currentTime >= this.transcriptData[i].time) {
+                        activeIndex = i;
+                        break;
+                    }
+                }
+
+                // Update visual indicators
+                segments.forEach((segment, index) => {
+                    segment.classList.remove('active');
+                    if (index === activeIndex) {
+                        segment.classList.add('active');
+                    }
+                });
+
+                this.currentSegmentIndex = activeIndex;
+            }
+
+            scrollToActiveSegment() {
+                const activeSegment = document.querySelector('.transcript-segment.active');
+                if (activeSegment) {
+                    activeSegment.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                }
+            }
+
+            handleSearch(query) {
+                if (!query.trim()) {
+                    this.searchResults.style.display = 'none';
+                    return;
+                }
+
+                const results = this.transcriptData.filter((segment, index) => 
+                    segment.text.toLowerCase().includes(query.toLowerCase()) ||
+                    segment.speaker.toLowerCase().includes(query.toLowerCase())
+                ).slice(0, 5);
+
+                if (results.length === 0) {
+                    this.searchResults.innerHTML = '<div class="search-result">No results found</div>';
+                    this.searchResults.style.display = 'block';
+                    return;
+                }
+
+                this.searchResults.innerHTML = results.map(segment => {
+                    const highlightedText = this.highlightSearchTerm(segment.text, query);
+                    return `
+                        <div class="search-result" data-time="${segment.time}">
+                            <strong>${segment.speaker}</strong> (${this.formatTime(segment.time)})
+                            <div>${highlightedText}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                this.searchResults.style.display = 'block';
+
+                // Add click handlers
+                this.searchResults.addEventListener('click', (e) => {
+                    const result = e.target.closest('.search-result');
+                    if (result) {
+                        const time = parseInt(result.dataset.time);
+                        this.seekToTime(time);
+                        this.highlightSegment(time);
+                        this.searchResults.style.display = 'none';
+                        this.searchInput.value = '';
+                    }
+                });
+            }
+
+            highlightSearchTerm(text, term) {
+                const regex = new RegExp(`(${term})`, 'gi');
+                return text.replace(regex, '<mark style="background: yellow; padding: 0 2px;">$1</mark>');
+            }
+
+            highlightSegment(time) {
+                const segment = document.querySelector(`[data-time="${time}"]`);
+                if (segment) {
+                    segment.classList.add('highlighted');
+                    setTimeout(() => segment.classList.remove('highlighted'), 2000);
+                }
+            }
+
+            changeSpeed(delta) {
+                const newSpeed = Math.max(0.25, Math.min(2, this.playbackRate + delta));
+                this.playbackRate = newSpeed;
+                this.speedControl.value = newSpeed;
+            }
+
+            formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            exportTranscript() {
+                const transcriptText = this.transcriptData.map(segment => 
+                    `[${this.formatTime(segment.time)}] ${segment.speaker}: ${segment.text}`
+                ).join('\n\n');
+
+                const blob = new Blob([transcriptText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'podcast-transcript.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            // Advanced features
+            generateWordCloud() {
+                const allWords = this.transcriptData
+                    .map(segment => segment.text)
+                    .join(' ')
+                    .toLowerCase()
+                    .replace(/[^\w\s]/g, '')
+                    .split(/\s+/)
+                    .filter(word => word.length > 3);
+
+                const wordFreq = {};
+                allWords.forEach(word => {
+                    wordFreq[word] = (wordFreq[word] || 0) + 1;
+                });
+
+                return Object.entries(wordFreq)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 20);
+            }
+
+            analyzeLength() {
+                return this.transcriptData.reduce((total, segment) => {
+                    return total + segment.text.split(' ').length;
+                }, 0);
+            }
+
+            detectSpeakerChanges() {
+                let changes = 0;
+                for (let i = 1; i < this.transcriptData.length; i++) {
+                    if (this.transcriptData[i].speaker !== this.transcriptData[i-1].speaker) {
+                        changes++;
+                    }
+                }
+                return changes;
+            }
+
+            // Real-time features simulation
+            simulateRealTimeHighlight() {
+                if (!this.isPlaying) return;
+
+                const currentSegment = this.transcriptData[this.currentSegmentIndex];
+                if (!currentSegment) return;
+
+                const words = currentSegment.text.split(' ');
+                const segmentDuration = this.currentSegmentIndex < this.transcriptData.length - 1 
+                    ? this.transcriptData[this.currentSegmentIndex + 1].time - currentSegment.time
+                    : 10;
+
+                const wordsPerSecond = words.length / segmentDuration;
+                const elapsedInSegment = this.currentTime - currentSegment.time;
+                const currentWordIndex = Math.floor(elapsedInSegment * wordsPerSecond);
+
+                // This would highlight individual words in a real implementation
+                // For demo purposes, we'll just add a visual indicator
+                const activeSegmentEl = document.querySelector('.transcript-segment.active .text');
+                if (activeSegmentEl) {
+                    const progress = Math.min(1, elapsedInSegment / segmentDuration);
+                    activeSegmentEl.style.background = `linear-gradient(90deg, 
+                        rgba(0, 122, 255, 0.1) ${progress * 100}%, 
+                        transparent ${progress * 100}%)`;
+                }
+            }
+
+            // Auto-scroll functionality
+            enableAutoScroll() {
+                setInterval(() => {
+                    if (this.isPlaying) {
+                        this.simulateRealTimeHighlight();
+                    }
+                }, 100);
+            }
+        }
+
+        // Additional utility functions
+        function exportTranscript() {
+            if (window.podcastViewer) {
+                window.podcastViewer.exportTranscript();
+            }
+        }
+
+        // Theme switching functionality
+        function toggleTheme() {
+            const root = document.documentElement;
+            const currentTheme = root.style.getPropertyValue('--background') || '#F5F5F7';
+            
+            if (currentTheme === '#F5F5F7') {
+                // Switch to dark theme
+                root.style.setProperty('--background', '#000000');
+                root.style.setProperty('--surface', '#1C1C1E');
+                root.style.setProperty('--text-primary', '#FFFFFF');
+                root.style.setProperty('--text-secondary', '#8E8E93');
+                root.style.setProperty('--border', '#38383A');
+                root.style.setProperty('--hover', '#2C2C2E');
+            } else {
+                // Switch to light theme
+                root.style.setProperty('--background', '#F5F5F7');
+                root.style.setProperty('--surface', '#FFFFFF');
+                root.style.setProperty('--text-primary', '#1D1D1F');
+                root.style.setProperty('--text-secondary', '#86868B');
+                root.style.setProperty('--border', '#E5E5E7');
+                root.style.setProperty('--hover', '#F2F2F7');
+            }
+        }
+
+        // Enhanced analytics
+        class PodcastAnalytics {
+            constructor(transcriptData) {
+                this.data = transcriptData;
+                this.updateStats();
+            }
+
+            updateStats() {
+                const totalWords = this.data.reduce((sum, segment) => 
+                    sum + segment.text.split(' ').length, 0);
+                
+                const speakers = [...new Set(this.data.map(s => s.speaker))];
+                const speakerStats = {};
+                
+                speakers.forEach(speaker => {
+                    const segments = this.data.filter(s => s.speaker === speaker);
+                    const words = segments.reduce((sum, s) => sum + s.text.split(' ').length, 0);
+                    speakerStats[speaker] = {
+                        segments: segments.length,
+                        words: words,
+                        percentage: ((words / totalWords) * 100).toFixed(1)
+                    };
+                });
+
+                this.stats = {
+                    totalWords,
+                    speakers: speakerStats,
+                    averageWordsPerSegment: Math.round(totalWords / this.data.length),
+                    longestSegment: Math.max(...this.data.map(s => s.text.length))
+                };
+            }
+
+            getSentimentAnalysis() {
+                // Simplified sentiment analysis
+                const positiveWords = ['great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'love', 'perfect', 'awesome'];
+                const negativeWords = ['bad', 'terrible', 'awful', 'hate', 'horrible', 'worst', 'disappointing'];
+                
+                let positive = 0, negative = 0, total = 0;
+                
+                this.data.forEach(segment => {
+                    const words = segment.text.toLowerCase().split(' ');
+                    words.forEach(word => {
+                        if (positiveWords.includes(word)) positive++;
+                        if (negativeWords.includes(word)) negative++;
+                        total++;
+                    });
+                });
+                
+                return {
+                    positive: ((positive / total) * 100).toFixed(1),
+                    negative: ((negative / total) * 100).toFixed(1),
+                    neutral: (((total - positive - negative) / total) * 100).toFixed(1)
+                };
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            window.podcastViewer = new PodcastTranscriptViewer();
+            window.podcastViewer.enableAutoScroll();
+            
+            // Add theme toggle button
+            const themeToggle = document.createElement('button');
+            themeToggle.innerHTML = '🌓';
+            themeToggle.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                border: none;
+                background: var(--surface);
+                box-shadow: var(--shadow);
+                cursor: pointer;
+                font-size: 1.5rem;
+                z-index: 1000;
+                transition: all 0.2s ease;
+            `;
+            themeToggle.addEventListener('click', toggleTheme);
+            themeToggle.addEventListener('mouseenter', () => {
+                themeToggle.style.transform = 'scale(1.1)';
+            });
+            themeToggle.addEventListener('mouseleave', () => {
+                themeToggle.style.transform = 'scale(1)';
+            });
+            document.body.appendChild(themeToggle);
+
+            // Add analytics
+            setTimeout(() => {
+                const analytics = new PodcastAnalytics(window.podcastViewer.transcriptData);
+                console.log('Podcast Analytics:', analytics.stats);
+                console.log('Sentiment Analysis:', analytics.getSentimentAnalysis());
+            }, 1000);
+
+            // Add loading animation
+            const loadingEl = document.querySelector('.loading');
+            if (loadingEl) {
+                setTimeout(() => {
+                    loadingEl.style.opacity = '0';
+                    setTimeout(() => loadingEl.remove(), 500);
+                }, 1500);
+            }
+
+            // Performance monitoring
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.transform = 'translateX(0)';
+                        entry.target.style.opacity = '1';
+                    }
+                });
+            });
+
+            // Observe transcript segments for smooth animations
+            setTimeout(() => {
+                document.querySelectorAll('.transcript-segment').forEach(segment => {
+                    segment.style.transform = 'translateX(-20px)';
+                    segment.style.opacity = '0.7';
+                    segment.style.transition = 'all 0.3s ease';
+                    observer.observe(segment);
+                });
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
